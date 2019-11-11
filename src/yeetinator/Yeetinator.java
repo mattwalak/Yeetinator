@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class Yeetinator {
 	
@@ -14,6 +15,8 @@ public class Yeetinator {
 			value = v;
 		}
 	}
+	
+	public static final String DELIMS = "[,;{}() \t]";
 	
 	// Reads file from stdin and returns an ArrayList where index 0 is the 0th line, 1 is the 1st line etc...
 	// If the line ends with a '\' (Line splice), the nth and n+1th lines are combined
@@ -93,9 +96,14 @@ public class Yeetinator {
 	}
 	
 	// Finds all tokens present in input and outputs them as a list of strings
-	// Uses linear search to find duplicates (barfs in mouth) for now... implement something else laterer
 	public static ArrayList<String> tokenize(ArrayList<String> input){
 		ArrayList<String> tokens = new ArrayList<String>();
+		tokens.add(",");
+		tokens.add(";");
+		tokens.add("{");
+		tokens.add("}");
+		tokens.add("(");
+		tokens.add(")");
 		for(int i = 0; i < input.size(); i++) {
 			String line = input.get(i);
 			
@@ -131,7 +139,7 @@ public class Yeetinator {
 			}
 			
 			// All other tokens
-			String[] lineTokens = line.split("[,;{}() \t]", -1);
+			String[] lineTokens = line.split(DELIMS, -1);
 			for(int j = 0; j < lineTokens.length; j++) {
 				if(lineTokens[j].length() != 0) {
 					String toAdd = lineTokens[j];
@@ -146,7 +154,7 @@ public class Yeetinator {
 		return tokens;
 	}
 	
-	// Generates a Yeet ID from a string based on the super cool MATT WALAK Yeet ID assigning algorithm
+	// Generates a Yeet ID from a string based on the super cool Yeet ID assigning algorithm
 	public static String getYeetID(int index) {
 		int n = 4;
 		for(int i = index; i > 15; i -= Math.pow(2, n)) {
@@ -184,38 +192,52 @@ public class Yeetinator {
 		return y + ee + t;
 	}
 	
-	// Assigns each token a unique Yeet ID (Unique capitalization of the word yeet)
-	public static ArrayList<Pair> assignYeetIDs(ArrayList<String> tokens){
-		
-		
-		return null;
-	}
-	
-	// Does the reverse of performMacros (Replaces value with key and re-inserts #define statements at the
-	//	top of the file.
-	public static void unperformMacros(ArrayList<String> input, ArrayList<Pair> substitutions) {
-		return;
+	// Replaces every occurrence of substitution with associated macro
+	public static void unperformMacros(ArrayList<String> input, ArrayList<String> substitutions) {
+		for(int i = 0; i < substitutions.size(); i++) {
+			// Add new #define statement at top of file
+			String macro = "#define "+getYeetID(i) + " " + substitutions.get(i);
+			input.add(0, macro);
+			
+			for(int j = 0; j < input.size(); j++) {
+				String line = input.get(j);
+				if((line.length() != 0) && (line.charAt(0) == '#')) {
+					continue;
+				}
+				
+				String key = substitutions.get(i);
+				if((key.charAt(0) == '"') || (key.charAt(0) == '\'')) {
+					line = line.replace(substitutions.get(i), getYeetID(i));
+					input.remove(j);
+					input.add(j, line);
+				}else {
+					line = line.replaceAll(DELIMS+"\\b"+substitutions.get(i)+"\\b"+DELIMS, getYeetID(i));
+					line = line.replaceAll("^\\b"+substitutions.get(i)+"\\b"+DELIMS, getYeetID(i));
+					line = line.replaceAll(DELIMS+"\\b"+substitutions.get(i)+"\\b$", getYeetID(i));
+					input.remove(j);
+					input.add(j, line);
+				}
+			}
+		}	
 	}
 	
 	public static void main(String[] args) {
-		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");			
-		removeComments(input);		
 		
-		// Tokenize, then find and "unperform" new yeet macros
-		ArrayList<String> tokens = tokenize(input);
-		ArrayList<Pair> newMacros = assignYeetIDs(tokens);
-		
-		
-		for(int i = 0; i < newMacros.size(); i++) {
-			Pair thisPair = newMacros.get(i);
-			System.out.println(thisPair.key +", "+thisPair.value);
-		}	
+		String line = "a this,(";
+		System.out.println(line.replaceAll(DELIMS+"\\bthis\\b"+DELIMS, "crazy"));
 		
 		System.exit(0);
 		
+		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");			
+		removeComments(input);		
 		
-		unperformMacros(input, newMacros);
+		ArrayList<String> tokens = tokenize(input);		
+		Collections.shuffle(tokens);
+		unperformMacros(input, tokens);
 		
+		for(int i = 0; i < input.size(); i++) {
+			System.out.println(input.get(i));
+		}
 	}
 	
 }
