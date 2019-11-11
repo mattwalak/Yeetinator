@@ -18,20 +18,20 @@ public class Yeetinator {
 	public static void main(String[] args) {
 		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");
 			
-		removeComments(input);
-		
-		for(int i = 0; i < input.size(); i++) {
-			System.out.println(input.get(i));
-		}	
-		
-		System.exit(0);
-		
+		removeComments(input);		
 		/*// Find and perform original macros
 		ArrayList<Pair> originalMacros = stripMacros(input);
 		performMacros(input, originalMacros);*/
 		
 		// Tokenize, then find and "unperform" new yeet macros
 		ArrayList<String> tokens = tokenize(input);
+		
+		for(int i = 0; i < tokens.size(); i++) {
+			System.out.println(tokens.get(i));
+		}	
+		
+		System.exit(0);
+		
 		ArrayList<Pair> newMacros = assignYeetIDs(tokens);
 		unperformMacros(input, newMacros);
 		
@@ -128,7 +128,19 @@ public class Yeetinator {
 	
 	// Finds all tokens present in input and outputs them as a list of strings
 	public static ArrayList<String> tokenize(ArrayList<String> input){
-		return null;
+		ArrayList<String> tokens = new ArrayList<String>();
+		for(int i = 0; i < input.size(); i++) {
+			String line = input.get(i);
+			String[] lineTokens = line.split("[;{}() \t]", -1);
+			for(int j = 0; j < lineTokens.length; j++) {
+				if(lineTokens[j].length() != 0) {
+					tokens.add(lineTokens[j]);
+				}
+				
+			}
+		}
+		
+		return tokens;
 	}
 	
 	// Assigns each token a unique Yeet ID (Unique capitalization of the word yeet)
