@@ -16,12 +16,12 @@ public class Yeetinator {
 	}
 	
 	public static void main(String[] args) {
-		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw.c");
+		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");
 			
 		removeComments(input);
 		
 		for(int i = 0; i < input.size(); i++) {
-			System.out.println(i+") "+input.get(i));
+			System.out.println(input.get(i));
 		}	
 		
 		System.exit(0);
@@ -72,56 +72,45 @@ public class Yeetinator {
 	
 	// Removes all comments (// and /*) from input
 	public static void removeComments(ArrayList<String> input){
-		String line;
-		boolean inComment = false;
-		int blockCommentStart; // Indicates where on this line a block comment started, -1 if no block comment started on this line
+		boolean inComment = false; // Used to track if we are in a block comment from the previous line
 		for(int i = 0; i < input.size(); i++) {
-			blockCommentStart = -1;
-			line = input.get(i);
-			for(int j = 0; j < line.length() - 1; j++) {
-				
-				if(inComment) {
-					// We are still in a block comment 
-					while((j < line.length() - 1)) {
-						if((line.charAt(j) == '*') && (line.charAt(j+1) == '/')) {
-							// We are leaving the block comment
-							if(blockCommentStart == -1) {
-								// We entered this block comment on a previous line
-								input.remove(i);
-								input.add(i, line.substring(j+2)); // Make sure this doesn't cause an error when */ is at the end of the line
-							}else {
-								input.remove(i);
-								String addString = line.substring(0, blockCommentStart) + line.substring(j+2);
-								input.add(i, addString);
-							}		
-							j += 2;
-							inComment = false;
-							break;
-						}else {
-							j++;
-						}
-					}
-
+			String line = input.get(i);			
+			
+			// Find end of previous block comment before continuing
+			if(inComment) {
+				int endIndex = line.indexOf("*/");
+				if(endIndex == -1) {
+					line = "";
+				}else{
+					line = line.substring(endIndex+2);
+					inComment = false;
 				}
-				
-				if(line.charAt(j) == '/') {
-					if(line.charAt(j+1) == '/') {
-						// We are entering a line comment
-						input.remove(i);
-						input.add(i, line.substring(0, j));
-						break;
+			}
+			
+			line = line.replaceAll("(?:/\\*(?:[^*]|(?:\\*+[^*/]))*\\*+/)|(?://.*)",""); // CREDIT: http://ostermiller.org/findcomment.html
+			
+			// See if any block comment extends beyond this line
+			int commentStarted = -1;
+			for(int j = 0; j < line.length()-1; j++) {
+				if(inComment) {
+					if((line.charAt(j) == '*') && (line.charAt(j+1) == '/')) {
+						inComment = false;
 					}
-					
-					if(line.charAt(j+1) == '*') {
+				}else {
+					if((line.charAt(j) == '/') && (line.charAt(j+1) == '*')) {
 						inComment = true;
-						blockCommentStart = j;
-						j += 2;
+						commentStarted = j;
 					}
 				}
 			}
 			
+			if(inComment && (line.length() != 0)) {
+				line = line.substring(0, commentStarted);
+			}
+			
+			input.remove(i);
+			input.add(i, line);
 		}
-		
 		return;
 	}
 	
