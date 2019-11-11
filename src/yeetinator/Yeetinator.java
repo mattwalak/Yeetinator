@@ -127,14 +127,51 @@ public class Yeetinator {
 	}*/
 	
 	// Finds all tokens present in input and outputs them as a list of strings
+	// Uses linear search to find duplicates (barfs in mouth) for now... implement something else laterer
 	public static ArrayList<String> tokenize(ArrayList<String> input){
 		ArrayList<String> tokens = new ArrayList<String>();
 		for(int i = 0; i < input.size(); i++) {
 			String line = input.get(i);
-			String[] lineTokens = line.split("[;{}() \t]", -1);
+			
+			// Ignore lines that start with #
+			if((line.length() != 0) && line.charAt(0) == '#') {
+				continue;
+			}
+			
+			// Handle strings and chars
+			// Assumes that if an open quote or tick mar exist, a closing mark exists as well
+			int quoteStart;
+			for(int j = 0; j < line.length()-1; j++) {
+				if((line.charAt(j) == '"') || (line.charAt(j) == '\'')) {
+					char stopChar = line.charAt(j);
+					quoteStart = j;
+					j++;
+					while((j < line.length()) && (line.charAt(j) != stopChar)) {
+						if(line.charAt(j) == '\\') {
+							j += 2;
+						}else {
+							j++;
+						}
+					}
+					
+					String toAdd = line.substring(quoteStart, j+1);
+					if(!tokens.contains(toAdd)) {
+						tokens.add(toAdd);
+					}
+					
+					line = line.substring(0, quoteStart) + line.substring(j+1); // Make sure this isn't out of bounds
+					j = quoteStart-1;
+				}
+			}
+			
+			// All other tokens
+			String[] lineTokens = line.split("[,;{}() \t]", -1);
 			for(int j = 0; j < lineTokens.length; j++) {
 				if(lineTokens[j].length() != 0) {
-					tokens.add(lineTokens[j]);
+					String toAdd = lineTokens[j];
+					if(!tokens.contains(toAdd)) {
+						tokens.add(toAdd);
+					}
 				}
 				
 			}
