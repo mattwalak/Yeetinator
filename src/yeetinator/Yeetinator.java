@@ -15,28 +15,6 @@ public class Yeetinator {
 		}
 	}
 	
-	public static void main(String[] args) {
-		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");
-			
-		removeComments(input);		
-		/*// Find and perform original macros
-		ArrayList<Pair> originalMacros = stripMacros(input);
-		performMacros(input, originalMacros);*/
-		
-		// Tokenize, then find and "unperform" new yeet macros
-		ArrayList<String> tokens = tokenize(input);
-		
-		for(int i = 0; i < tokens.size(); i++) {
-			System.out.println(tokens.get(i));
-		}	
-		
-		System.exit(0);
-		
-		ArrayList<Pair> newMacros = assignYeetIDs(tokens);
-		unperformMacros(input, newMacros);
-		
-	}
-	
 	// Reads file from stdin and returns an ArrayList where index 0 is the 0th line, 1 is the 1st line etc...
 	// If the line ends with a '\' (Line splice), the nth and n+1th lines are combined
 	public static ArrayList<String> readInFile(String filename){
@@ -114,18 +92,6 @@ public class Yeetinator {
 		return;
 	}
 	
-	/*
-	// Finds all macros in #define statements, strips them from input, and returns the macros as key, value pairs
-	public static ArrayList<Pair> stripMacros(ArrayList<String> input){
-		return null;
-	}
-	
-	// Performs macros given by substitutions (A list of key, value pairs) and returns the changed file as 
-	// 	and ArrayList
-	public static void performMacros(ArrayList<String> input, ArrayList<Pair> substitutions){
-		return;
-	}*/
-	
 	// Finds all tokens present in input and outputs them as a list of strings
 	// Uses linear search to find duplicates (barfs in mouth) for now... implement something else laterer
 	public static ArrayList<String> tokenize(ArrayList<String> input){
@@ -159,7 +125,7 @@ public class Yeetinator {
 						tokens.add(toAdd);
 					}
 					
-					line = line.substring(0, quoteStart) + line.substring(j+1); // Make sure this isn't out of bounds
+					line = line.substring(0, quoteStart) + line.substring(j+1);
 					j = quoteStart-1;
 				}
 			}
@@ -180,8 +146,48 @@ public class Yeetinator {
 		return tokens;
 	}
 	
+	// Generates a Yeet ID from a string based on the super cool MATT WALAK Yeet ID assigning algorithm
+	public static String getYeetID(int index) {
+		int n = 4;
+		for(int i = index; i > 15; i -= Math.pow(2, n)) {
+			n++;
+		}
+		
+		int yeetValue = index;
+		for(int i = 4; i < n; i++) {
+			yeetValue -= Math.pow(2, i);
+		}
+		
+		String id = Integer.toBinaryString(yeetValue);
+		while(id.length() < n) {
+			id = "0" + id;
+		}
+		
+		String ee = id.substring(1, id.length()-1);
+		ee = ee.replace('0', 'e');
+		ee = ee.replace('1', 'E');
+		
+		char y;
+		if(id.charAt(0) == '0') {
+			y = 'y';
+		}else {
+			y = 'Y';
+		}
+		
+		char t;
+		if(id.charAt(id.length()-1) == '0') {
+			t = 't';
+		}else {
+			t = 'T';
+		}
+		
+		return y + ee + t;
+	}
+	
 	// Assigns each token a unique Yeet ID (Unique capitalization of the word yeet)
 	public static ArrayList<Pair> assignYeetIDs(ArrayList<String> tokens){
+		
+		
 		return null;
 	}
 	
@@ -191,6 +197,25 @@ public class Yeetinator {
 		return;
 	}
 	
-	
+	public static void main(String[] args) {
+		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");			
+		removeComments(input);		
+		
+		// Tokenize, then find and "unperform" new yeet macros
+		ArrayList<String> tokens = tokenize(input);
+		ArrayList<Pair> newMacros = assignYeetIDs(tokens);
+		
+		
+		for(int i = 0; i < newMacros.size(); i++) {
+			Pair thisPair = newMacros.get(i);
+			System.out.println(thisPair.key +", "+thisPair.value);
+		}	
+		
+		System.exit(0);
+		
+		
+		unperformMacros(input, newMacros);
+		
+	}
 	
 }
