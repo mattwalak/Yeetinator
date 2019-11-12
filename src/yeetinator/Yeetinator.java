@@ -1,5 +1,6 @@
 package yeetinator;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -195,8 +196,10 @@ public class Yeetinator {
 	// Replaces every occurrence of substitution with associated macro
 	public static void unperformMacros(ArrayList<String> input, ArrayList<String> substitutions) {
 		for(int i = 0; i < substitutions.size(); i++) {
+			String yeetID = getYeetID(i);
+
 			// Add new #define statement at top of file
-			String macro = "#define "+getYeetID(i) + " " + substitutions.get(i);
+			String macro = "#define "+ yeetID + " " + substitutions.get(i);
 			input.add(0, macro);
 			
 			for(int j = 0; j < input.size(); j++) {
@@ -207,13 +210,25 @@ public class Yeetinator {
 				
 				String key = substitutions.get(i);
 				if((key.charAt(0) == '"') || (key.charAt(0) == '\'')) {
-					line = line.replace(substitutions.get(i), getYeetID(i));
+					// Quoted replacement
+					line = line.replace(key, yeetID);
 					input.remove(j);
 					input.add(j, line);
 				}else {
-					line = line.replaceAll(DELIMS+"\\b"+substitutions.get(i)+"\\b"+DELIMS, getYeetID(i));
-					line = line.replaceAll("^\\b"+substitutions.get(i)+"\\b"+DELIMS, getYeetID(i));
-					line = line.replaceAll(DELIMS+"\\b"+substitutions.get(i)+"\\b$", getYeetID(i));
+					// Token replacement
+					int pos = -1;
+					System.out.println("-> "+key);
+					while((pos = line.indexOf(key, pos+1)) != -1) {
+						System.out.println("pos = "+pos+" looking for: "+key);
+						if(pos == 0) {
+							line = line.replaceFirst(Pattern.quote(key), yeetID);
+						}else if((pos + key.length()) == line.length()) {
+							line = line.replaceFirst(Pattern.quote(key), yeetID);
+						}else if(Character.toString(line.charAt(pos-1)).matches(DELIMS) && Character.toString(line.charAt(pos+key.length())).matches(DELIMS)) {
+							line = line.replaceFirst(Pattern.quote(key), yeetID);
+						}
+					}
+					
 					input.remove(j);
 					input.add(j, line);
 				}
@@ -223,10 +238,9 @@ public class Yeetinator {
 	
 	public static void main(String[] args) {
 		
-		String line = "a this,(";
+		/*String line = "a this,(";
 		System.out.println(line.replaceAll(DELIMS+"\\bthis\\b"+DELIMS, "crazy"));
-		
-		System.exit(0);
+		System.exit(0);*/
 		
 		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");			
 		removeComments(input);		
