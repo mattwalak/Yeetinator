@@ -17,7 +17,8 @@ public class Yeetinator {
 		}
 	}
 	
-	public static final String DELIMS = "[,;{}() \t]";
+	public static final String DELIMS_REGEX = "[,;{}() \t]";
+	public static final String DELIMS = ",;{}()";
 	
 	// Reads file from stdin and returns an ArrayList where index 0 is the 0th line, 1 is the 1st line etc...
 	// If the line ends with a '\' (Line splice), the nth and n+1th lines are combined
@@ -99,12 +100,10 @@ public class Yeetinator {
 	// Finds all tokens present in input and outputs them as a list of strings
 	public static ArrayList<String> tokenize(ArrayList<String> input){
 		ArrayList<String> tokens = new ArrayList<String>();
-		tokens.add(",");
-		tokens.add(";");
-		tokens.add("{");
-		tokens.add("}");
-		tokens.add("(");
-		tokens.add(")");
+		for(int i = 0; i < DELIMS.length(); i++) {
+			tokens.add(Character.toString(DELIMS.charAt(i)));
+		}
+		
 		for(int i = 0; i < input.size(); i++) {
 			String line = input.get(i);
 			
@@ -140,7 +139,7 @@ public class Yeetinator {
 			}
 			
 			// All other tokens
-			String[] lineTokens = line.split(DELIMS, -1);
+			String[] lineTokens = line.split(DELIMS_REGEX, -1);
 			for(int j = 0; j < lineTokens.length; j++) {
 				if(lineTokens[j].length() != 0) {
 					String toAdd = lineTokens[j];
@@ -193,22 +192,48 @@ public class Yeetinator {
 		return y + ee + t;
 	}
 	
+	// Returns an ArrayList<Integer> with all indexes of where delimiters occur
+	public static ArrayList<Integer> getDelimIndicies(String line){
+		ArrayList<Integer> out = new ArrayList<Integer>();
+		for(int i = 0; i < line.length(); i++) {
+			for(int j = 0; j < DELIMS.length(); j++) {
+				if(line.charAt(i) == DELIMS.charAt(j)) {
+					out.add(i);
+					break;
+				}
+			}
+		}
+		return out;
+	}
+	
+	// Returns true if a character is a defined delimiter, false otherwise
+	public static boolean isDelim(char in) {
+		for(int i = 0; i < DELIMS.length(); i++) {
+			if(DELIMS.charAt(i) == in) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	// Replaces every occurrence of substitution with associated macro
 	public static void unperformMacros(ArrayList<String> input, ArrayList<String> substitutions) {
 		for(int i = 0; i < substitutions.size(); i++) {
-			String yeetID = getYeetID(i);
-
 			// Add new #define statement at top of file
-			String macro = "#define "+ yeetID + " " + substitutions.get(i);
+			String macro = "#define "+  getYeetID(i) + " " + substitutions.get(i);
 			input.add(0, macro);
+		}
+		
+		for(int i = 0; i < input.size(); i++) {
+			String line = input.get(i);
+			if((line.length() > 0) && line.charAt(0) == '#') {
+				continue;
+			}
 			
-			for(int j = 0; j < input.size(); j++) {
-				String line = input.get(j);
-				if((line.length() != 0) && (line.charAt(0) == '#')) {
-					continue;
-				}
+			for(int j = 0; j < substitutions.size(); j++) {
+				String key = substitutions.get(j);
+				String yeetID = getYeetID(j) + " ";
 				
-				String key = substitutions.get(i);
 				if((key.charAt(0) == '"') || (key.charAt(0) == '\'')) {
 					// Quoted replacement
 					line = line.replace(key, yeetID);
@@ -216,21 +241,24 @@ public class Yeetinator {
 					input.add(j, line);
 				}else {
 					// Token replacement
-					int pos = -1;
-					System.out.println("-> "+key);
-					while((pos = line.indexOf(key, pos+1)) != -1) {
-						System.out.println("pos = "+pos+" looking for: "+key);
-						if(pos == 0) {
-							line = line.replaceFirst(Pattern.quote(key), yeetID);
-						}else if((pos + key.length()) == line.length()) {
-							line = line.replaceFirst(Pattern.quote(key), yeetID);
-						}else if(Character.toString(line.charAt(pos-1)).matches(DELIMS) && Character.toString(line.charAt(pos+key.length())).matches(DELIMS)) {
-							line = line.replaceFirst(Pattern.quote(key), yeetID);
+					int location = 0;
+					int keyIndex = line.indexOf(key, location);
+					while(keyIndex != -1) {
+						// See if this occurrence is bounded by delimiters
+						boolean left, right;
+						int strEnd = keyIndex + key.length();
+						left = (keyIndex == 0) || (isDelim(line.charAt(keyIndex-1)));
+						right = (strEnd >= line.length()) || (isDelim(line.charAt(strEnd)));
+						if(left && right) {
+							// Valid occurrence! Do the exchange
+							line = line.substring(0, keyIndex) + yeetID + line.substring(strEnd);
+							location = keyIndex + yeetID.length();
+						}else {
+							// Invalid occurrence... skip past this
+							location = strEnd;
 						}
+						keyIndex = line.indexOf(key, location);
 					}
-					
-					input.remove(j);
-					input.add(j, line);
 				}
 			}
 		}	
@@ -239,7 +267,7 @@ public class Yeetinator {
 	public static void main(String[] args) {
 		
 		/*String line = "a this,(";
-		System.out.println(line.replaceAll(DELIMS+"\\bthis\\b"+DELIMS, "crazy"));
+		System.out.println(line.replaceAll(DELIMS_REGEX+"\\bthis\\b"+DELIMS_REGEX, "crazy"));
 		System.exit(0);*/
 		
 		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");			
