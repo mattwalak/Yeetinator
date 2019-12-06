@@ -2,8 +2,11 @@ package yeetinator;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -47,7 +50,7 @@ public class Yeetinator {
 			}
 		}catch(Exception e) {
 			e.printStackTrace();
-			System.exit(-1);
+			System.exit(1);
 		}
 		
 		return output;
@@ -218,37 +221,69 @@ public class Yeetinator {
 	
 	// Replaces every occurrence of substitution with associated macro
 	public static void unperformMacros(ArrayList<String> input, ArrayList<String> substitutions) {
+		// Add new #define statement at top of file (But underneath original #includes and #defines)
+		int start = 0;
+		while(true) {
+			if((input.get(start).length() > 0) && (input.get(start).charAt(0) != '#')) {
+				break;
+			}
+			start++;
+		}
+
 		for(int i = 0; i < substitutions.size(); i++) {
-			// Add new #define statement at top of file
 			String macro = "#define "+  getYeetID(i) + " " + substitutions.get(i);
-			input.add(0, macro);
+			input.add(start, macro);
 		}
 		
+		// Quoted substitutions first
 		for(int i = 0; i < input.size(); i++) {
 			String line = input.get(i);
 			if((line.length() > 0) && line.charAt(0) == '#') {
 				continue;
 			}
 			
-			for(int j = 0; j < substitutions.size(); j++) {
+			for(int j = 0; j < substitutions.size(); j++) {				
 				String key = substitutions.get(j);
 				String yeetID = getYeetID(j) + " ";
+				
+				if(isDelim(key.charAt(0))){
+					continue; // Skip delims for now
+				}
 				
 				if((key.charAt(0) == '"') || (key.charAt(0) == '\'')) {
 					// Quoted replacement
 					line = line.replace(key, yeetID);
-					input.remove(j);
-					input.add(j, line);
-				}else {
-					// Token replacement
+				}
+			}
+			input.remove(i);
+			input.add(i, line);
+		}	
+		
+		// Unquoted substitutions next	
+		for(int i = 0; i < input.size(); i++) {
+			String line = input.get(i);
+			String original = line;
+			if((line.length() > 0) && line.charAt(0) == '#') {
+				continue;
+			}
+			
+			for(int j = 0; j < substitutions.size(); j++) {				
+				String key = substitutions.get(j);
+				String yeetID = getYeetID(j) + " ";
+				
+				if(isDelim(key.charAt(0))){
+					continue; // Skip delims for now
+				}
+				
+				if((key.charAt(0) != '"') && (key.charAt(0) != '\'')) {
 					int location = 0;
 					int keyIndex = line.indexOf(key, location);
 					while(keyIndex != -1) {
 						// See if this occurrence is bounded by delimiters
 						boolean left, right;
 						int strEnd = keyIndex + key.length();
-						left = (keyIndex == 0) || (isDelim(line.charAt(keyIndex-1)));
-						right = (strEnd >= line.length()) || (isDelim(line.charAt(strEnd)));
+						left = (keyIndex == 0) || (isDelim(line.charAt(keyIndex-1)) || (Character.isWhitespace(line.charAt(keyIndex-1))));
+						right = (strEnd >= line.length()) || (isDelim(line.charAt(strEnd))  || (Character.isWhitespace(line.charAt(strEnd))));
 						if(left && right) {
 							// Valid occurrence! Do the exchange
 							line = line.substring(0, keyIndex) + yeetID + line.substring(strEnd);
@@ -261,25 +296,110 @@ public class Yeetinator {
 					}
 				}
 			}
+			input.remove(i);
+			input.add(i, line);
+		}
+		
+		// And finally the delimiters
+		for(int i = 0; i < input.size(); i++) {
+			String line = input.get(i);
+			if((line.length() > 0) && line.charAt(0) == '#') {
+				continue;
+			}
+					
+			for(int j = 0; j < substitutions.size(); j++) {				
+				String key = substitutions.get(j);
+				String yeetID = getYeetID(j) + " ";
+						
+				if(isDelim(key.charAt(0))){
+					line = line.replace(key, yeetID);
+				}
+						
+			}
+			input.remove(i);
+			input.add(i, line);
 		}	
 	}
 	
+	public static void writeToFile(ArrayList<String> input, String fileout) {
+		try {
+			BufferedWriter writer = new BufferedWriter(new FileWriter(fileout));
+			for(int i = 0; i < input.size(); i++) {
+				writer.write(input.get(i)+"\n");
+			}
+			writer.close();
+		}catch(IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	
+	// Makes your yeets into a nice block
+	public static ArrayList<String> beautify(ArrayList<String> original, int width) {
+		ArrayList<String> beauty = new ArrayList<String>();
+		String newLine = "";
+		for(int i = 0; i < original.size(); i++) {
+			String originalLine = original.get(i);
+			if(originalLine.length() < 1) {
+				continue;
+			}else if(originalLine.charAt(0) == '#') {
+				beauty.add(originalLine);
+			}else {
+				originalLine = originalLine.trim();
+				while(originalLine.length() > 0) {
+					int loc = 0;
+					while((loc < originalLine.length()) && !Character.isWhitespace(originalLine.charAt(loc))) {
+						loc++;
+					}
+					
+					if((loc+newLine.length() + 1) > width) {
+						beauty.add(newLine);
+						newLine = originalLine.substring(0, loc)+" ";
+					}else {
+						newLine = newLine + originalLine.substring(0, loc) + " ";
+					}
+					
+					originalLine = originalLine.substring(loc);
+					originalLine = originalLine.trim();
+				}
+			}
+		}
+		beauty.add(newLine);		
+		return beauty;
+	}
+	
 	public static void main(String[] args) {
+		if((args.length < 2) || (args.length > 3)) {
+			System.out.println("usage: Yeetinator from_file to_file [page_width]");
+			System.exit(0);
+		}
 		
-		/*String line = "a this,(";
-		System.out.println(line.replaceAll(DELIMS_REGEX+"\\bthis\\b"+DELIMS_REGEX, "crazy"));
-		System.exit(0);*/
+		String filein = args[0];
+		String fileout = args[1];
+		int maxWidth = 75;
+		if(args.length == 3) {
+			try {
+				maxWidth = Integer.parseInt(args[2]);
+			}catch(NumberFormatException e) {
+				System.out.println("usage: Yeetinator from_file to_file [page_width]");
+				System.exit(1);
+			}
+		}
 		
-		ArrayList<String> input = readInFile("C:\\Users\\walak\\Desktop\\Code\\Files\\lzw - Copy.c");			
+		System.out.println("Reading - "+filein);
+		ArrayList<String> input = readInFile(filein);	
+		System.out.println("Removing comments...");
 		removeComments(input);		
-		
+		System.out.println("Tokenizing...");
 		ArrayList<String> tokens = tokenize(input);		
 		Collections.shuffle(tokens);
+		System.out.println("Yeetifying...");
 		unperformMacros(input, tokens);
-		
-		for(int i = 0; i < input.size(); i++) {
-			System.out.println(input.get(i));
-		}
+		System.out.println("Beautifying...");
+		input = beautify(input, maxWidth);
+		System.out.println("Writing to file...");
+		writeToFile(input, fileout);
+		System.out.println("Finished - "+fileout);
 	}
 	
 }
